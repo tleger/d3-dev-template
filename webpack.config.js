@@ -17,6 +17,8 @@ module.exports = {
 	},
 	plugins: [
 		new webpack.ProvidePlugin({
+			$: "jquery",
+			jQuery: "jquery",
 			d3: "d3"
 		}),
 		new HtmlWebpackPlugin({

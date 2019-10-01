@@ -1,0 +1,9 @@
+body {
+    margin-left: 0px;
+}
+    #graph {
+    position: absolute;
+    top: 40px; 
+    bottom: 20px; 
+    width: 100%;
+}
