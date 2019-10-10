@@ -50,6 +50,7 @@ class HarmonyExportImportedSpecifierDependency extends HarmonyImportDependency {
 	) {
 		super(request, originModule, sourceOrder, parserScope);
 		this.id = id;
+		this.redirectedId = undefined;
 		this.name = name;
 		this.activeExports = activeExports;
 		this.otherStarExports = otherStarExports;
@@ -60,9 +61,13 @@ class HarmonyExportImportedSpecifierDependency extends HarmonyImportDependency {
 		return "harmony export imported specifier";
 	}
 
+	get _id() {
+		return this.redirectedId || this.id;
+	}
+
 	getMode(ignoreUnused) {
 		const name = this.name;
-		const id = this.id;
+		const id = this._id;
 		const used = this.originModule.isUsed(name);
 		const importedModule = this._module;
 
@@ -244,7 +249,8 @@ class HarmonyExportImportedSpecifierDependency extends HarmonyImportDependency {
 				return new DependencyReference(
 					mode.module,
 					Array.from(mode.map.values()),
-					false
+					false,
+					this.sourceOrder
 				);
 
 			case "dynamic-reexport":
@@ -287,7 +293,7 @@ class HarmonyExportImportedSpecifierDependency extends HarmonyImportDependency {
 			};
 		}
 
-		const importedModule = this.module;
+		const importedModule = this._module;
 
 		if (!importedModule) {
 			// no imported module available
@@ -349,36 +355,32 @@ class HarmonyExportImportedSpecifierDependency extends HarmonyImportDependency {
 			// It's not an harmony module
 			if (
 				this.originModule.buildMeta.strictHarmonyModule &&
-				this.id !== "default"
+				this._id &&
+				this._id !== "default"
 			) {
 				// In strict harmony modules we only support the default export
-				const exportName = this.id
-					? `the named export '${this.id}'`
-					: "the namespace object";
 				return [
 					new HarmonyLinkingError(
-						`Can't reexport ${exportName} from non EcmaScript module (only default export is available)`
+						`Can't reexport the named export '${this._id}' from non EcmaScript module (only default export is available)`
 					)
 				];
 			}
 			return;
 		}
 
-		if (!this.id) {
+		if (!this._id) {
 			return;
 		}
 
-		if (importedModule.isProvided(this.id) !== false) {
+		if (importedModule.isProvided(this._id) !== false) {
 			// It's provided or we are not sure
 			return;
 		}
 
 		// We are sure that it's not provided
 		const idIsNotNameMessage =
-			this.id !== this.name ? ` (reexported as '${this.name}')` : "";
-		const errorMessage = `"export '${
-			this.id
-		}'${idIsNotNameMessage} was not found in '${this.userRequest}'`;
+			this._id !== this.name ? ` (reexported as '${this.name}')` : "";
+		const errorMessage = `"export '${this._id}'${idIsNotNameMessage} was not found in '${this.userRequest}'`;
 		return [new HarmonyLinkingError(errorMessage)];
 	}
 
@@ -400,6 +402,11 @@ class HarmonyExportImportedSpecifierDependency extends HarmonyImportDependency {
 		return (
 			importedModule.used + stringifiedUsedExport + stringifiedProvidedExport
 		);
+	}
+
+	disconnect() {
+		super.disconnect();
+		this.redirectedId = undefined;
 	}
 }
 
@@ -602,10 +609,10 @@ HarmonyExportImportedSpecifierDependency.Template = class HarmonyExportImportedS
 
 	getReexportStatement(module, key, name, valueKey) {
 		const exportsName = module.exportsArgument;
-		const returnValue = this.getReturnValue(valueKey);
+		const returnValue = this.getReturnValue(name, valueKey);
 		return `__webpack_require__.d(${exportsName}, ${JSON.stringify(
 			key
-		)}, function() { return ${name}${returnValue}; });\n`;
+		)}, function() { return ${returnValue}; });\n`;
 	}
 
 	getReexportFakeNamespaceObjectStatement(module, key, name) {
@@ -616,20 +623,29 @@ HarmonyExportImportedSpecifierDependency.Template = class HarmonyExportImportedS
 	}
 
 	getConditionalReexportStatement(module, key, name, valueKey) {
+		if (valueKey === false) {
+			return "/* unused export */\n";
+		}
 		const exportsName = module.exportsArgument;
-		const returnValue = this.getReturnValue(valueKey);
+		const returnValue = this.getReturnValue(name, valueKey);
 		return `if(__webpack_require__.o(${name}, ${JSON.stringify(
 			valueKey
 		)})) __webpack_require__.d(${exportsName}, ${JSON.stringify(
 			key
-		)}, function() { return ${name}${returnValue}; });\n`;
+		)}, function() { return ${returnValue}; });\n`;
 	}
 
-	getReturnValue(valueKey) {
+	getReturnValue(name, valueKey) {
 		if (valueKey === null) {
-			return "_default.a";
+			return `${name}_default.a`;
+		}
+		if (valueKey === "") {
+			return name;
+		}
+		if (valueKey === false) {
+			return "/* unused export */ undefined";
 		}
 
-		return valueKey && "[" + JSON.stringify(valueKey) + "]";
+		return `${name}[${JSON.stringify(valueKey)}]`;
 	}
 };

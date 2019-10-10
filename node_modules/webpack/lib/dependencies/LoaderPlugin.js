@@ -5,6 +5,17 @@
 "use strict";
 
 const LoaderDependency = require("./LoaderDependency");
+const NormalModule = require("../NormalModule");
+
+/** @typedef {import("../Module")} Module */
+
+/**
+ * @callback LoadModuleCallback
+ * @param {Error=} err error object
+ * @param {string=} source source code
+ * @param {object=} map source map
+ * @param {Module=} module loaded module if successful
+ */
 
 class LoaderPlugin {
 	apply(compiler) {
@@ -22,18 +33,23 @@ class LoaderPlugin {
 			compilation.hooks.normalModuleLoader.tap(
 				"LoaderPlugin",
 				(loaderContext, module) => {
+					/**
+					 * @param {string} request the request string to load the module from
+					 * @param {LoadModuleCallback} callback callback returning the loaded module or error
+					 * @returns {void}
+					 */
 					loaderContext.loadModule = (request, callback) => {
 						const dep = new LoaderDependency(request);
-						dep.loc = request;
+						dep.loc = {
+							name: request
+						};
 						const factory = compilation.dependencyFactories.get(
 							dep.constructor
 						);
 						if (factory === undefined) {
 							return callback(
 								new Error(
-									`No module factory available for dependency type: ${
-										dep.constructor.name
-									}`
+									`No module factory available for dependency type: ${dep.constructor.name}`
 								)
 							);
 						}
@@ -57,7 +73,8 @@ class LoaderPlugin {
 									if (!dep.module) {
 										return callback(new Error("Cannot load the module"));
 									}
-									if (dep.module.error) {
+									// TODO consider removing this in webpack 5
+									if (dep.module instanceof NormalModule && dep.module.error) {
 										return callback(dep.module.error);
 									}
 									if (!dep.module._source) {

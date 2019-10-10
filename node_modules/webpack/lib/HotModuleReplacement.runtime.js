@@ -5,12 +5,15 @@
 /*global $hash$ $requestTimeout$ installedModules $require$ hotDownloadManifest hotDownloadUpdateChunk hotDisposeChunk modules */
 module.exports = function() {
 	var hotApplyOnUpdate = true;
-	var hotCurrentHash = $hash$; // eslint-disable-line no-unused-vars
+	// eslint-disable-next-line no-unused-vars
+	var hotCurrentHash = $hash$;
 	var hotRequestTimeout = $requestTimeout$;
 	var hotCurrentModuleData = {};
-	var hotCurrentChildModule; // eslint-disable-line no-unused-vars
-	var hotCurrentParents = []; // eslint-disable-line no-unused-vars
-	var hotCurrentParentsTemp = []; // eslint-disable-line no-unused-vars
+	var hotCurrentChildModule;
+	// eslint-disable-next-line no-unused-vars
+	var hotCurrentParents = [];
+	// eslint-disable-next-line no-unused-vars
+	var hotCurrentParentsTemp = [];
 
 	// eslint-disable-next-line no-unused-vars
 	function hotCreateRequire(moduleId) {
@@ -102,7 +105,7 @@ module.exports = function() {
 			// Module API
 			active: true,
 			accept: function(dep, callback) {
-				if (typeof dep === "undefined") hot._selfAccepted = true;
+				if (dep === undefined) hot._selfAccepted = true;
 				else if (typeof dep === "function") hot._selfAccepted = dep;
 				else if (typeof dep === "object")
 					for (var i = 0; i < dep.length; i++)
@@ -110,7 +113,7 @@ module.exports = function() {
 				else hot._acceptedDependencies[dep] = callback || function() {};
 			},
 			decline: function(dep) {
-				if (typeof dep === "undefined") hot._selfDeclined = true;
+				if (dep === undefined) hot._selfDeclined = true;
 				else if (typeof dep === "object")
 					for (var i = 0; i < dep.length; i++)
 						hot._declinedDependencies[dep[i]] = true;
@@ -199,8 +202,8 @@ module.exports = function() {
 			});
 			hotUpdate = {};
 			/*foreachInstalledChunks*/
+			// eslint-disable-next-line no-lone-blocks
 			{
-				// eslint-disable-line no-lone-blocks
 				/*globals chunkId */
 				hotEnsureUpdateChunk(chunkId);
 			}
@@ -287,7 +290,7 @@ module.exports = function() {
 			var outdatedModules = [updateModuleId];
 			var outdatedDependencies = {};
 
-			var queue = outdatedModules.slice().map(function(id) {
+			var queue = outdatedModules.map(function(id) {
 				return {
 					chain: [id],
 					id: id
@@ -464,12 +467,15 @@ module.exports = function() {
 			moduleId = outdatedModules[i];
 			if (
 				installedModules[moduleId] &&
-				installedModules[moduleId].hot._selfAccepted
-			)
+				installedModules[moduleId].hot._selfAccepted &&
+				// removed self-accepted modules should not be required
+				appliedUpdate[moduleId] !== warnUnexpectedRequire
+			) {
 				outdatedSelfAcceptedModules.push({
 					module: moduleId,
 					errorHandler: installedModules[moduleId].hot._selfAccepted
 				});
+			}
 		}
 
 		// Now in "dispose" phase
@@ -536,7 +542,7 @@ module.exports = function() {
 			}
 		}
 
-		// Not in "apply" phase
+		// Now in "apply" phase
 		hotSetStatus("apply");
 
 		hotCurrentHash = hotUpdateNewHash;
