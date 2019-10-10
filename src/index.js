@@ -8,6 +8,7 @@ var margin = { top: 20, right: 30, bottom: 50, left: 30 },
     width = $("#graph").outerWidth() - margin.left - margin.right,
     height = $('#graph').outerHeight() - margin.top - margin.bottom;
 
+// data source: https://www.federalreserve.gov/releases/efa/efa-distributional-financial-accounts.htm
 d3.csv('data/dfa-age-shares.csv')
     .then(function (data) {
         data.forEach(function (d) {
