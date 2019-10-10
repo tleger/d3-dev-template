@@ -139,13 +139,8 @@ $(document).keydown(e => {
             }, i * 100);
         }
 
-
         for (var i = 1; i < 120; i++) {
-
             doSetTimeout(i);
-
-
-
         }
     }
 
